@@ -7,20 +7,22 @@ from selenium.webdriver.chrome.options import Options
 import time, datetime, os
 import pandas as pd
 from openpyxl import load_workbook
+from selenium.webdriver.chrome.service import Service
 
 
 def stock_excel_update():
     user = os.path.expanduser("~").replace("C:\\Users\\", "")
 
-    todays_excel = pd.DataFrame({"Calls OI":[],"Calls CHNG IN OI":[],"Calls VOLUME":[],"Calls IV":[],"Calls LTP":[],
-                       "Calls CHNG":[],"Calls BID QTY":[],"Calls BID PRICE":[],"Calls ASK PRICE":[],
-                       "Calls ASK QTY":[],"Puts STRIKE PRICE":[],"Puts BID QTY":[],"Puts BID PRICE":[],
-                       "Puts ASK PRICE":[],"Puts ASK QTY":[],"Puts CHNG":[],"Puts LTP":[],"Puts IV":[],
-                       "Puts VOLUME":[],"Puts CHNG IN OI":[],"Puts OI":[],"Nifty":[],"Time_Stamp":[]})
+    todays_excel = pd.DataFrame(
+        {"Calls OI": [], "Calls CHNG IN OI": [], "Calls VOLUME": [], "Calls IV": [], "Calls LTP": [],
+         "Calls CHNG": [], "Calls BID QTY": [], "Calls BID PRICE": [], "Calls ASK PRICE": [],
+         "Calls ASK QTY": [], "Puts STRIKE PRICE": [], "Puts BID QTY": [], "Puts BID PRICE": [],
+         "Puts ASK PRICE": [], "Puts ASK QTY": [], "Puts CHNG": [], "Puts LTP": [], "Puts IV": [],
+         "Puts VOLUME": [], "Puts CHNG IN OI": [], "Puts OI": [], "Nifty": [], "Time": [], "Date": []})
 
-    todays_excel_path = "StockMarket_" + str(datetime.date.today()).replace('-','_') + '.xlsx'
+    todays_excel_path = "StockMarket_" + str(datetime.date.today()).replace('-', '_') + '.xlsx'
 
-    if not os.path.exists('.\\'+todays_excel_path):
+    if not os.path.exists('.\\' + todays_excel_path):
         todays_excel.to_excel(todays_excel_path, index=False)
         print('New excel created for today.')
 
@@ -37,20 +39,32 @@ def stock_excel_update():
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     # options.add_argument('--headless')
-    driver = webdriver.Chrome(ChromeDriverManager().install())
+    # driver = webdriver.Chrome(ChromeDriverManager().install())
+    s = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=s)
+    # driver = webdriver.Chrome('chromedriver.exe')
     driver.get("https://www.nseindia.com/option-chain")
     WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.ID, "equity_underlyingVal")))
-    nifty = driver.find_element(By.XPATH, '//*[@id="equity_underlyingVal"]').text
+    nifty = (driver.find_element(By.XPATH, '//*[@id="equity_underlyingVal"]').text).replace('NIFTY ', '').replace(',',
+                                                                                                                  '')
     time_stamp = driver.find_element(By.XPATH, '//*[@id="equity_timeStamp"]').text
-    time.sleep(4)
+    WebDriverWait(driver, 20).until(
+        EC.visibility_of_element_located((By.XPATH, '//*[@id="optionChainTable-indices"]/tbody/tr[1]/td[2]')))
     driver.find_element(By.XPATH, '//*[@id="downloadOCTable"]').click()
     paths = WebDriverWait(driver, 60, 1).until(every_downloads_chrome)
     driver.quit()
     data_dump = pd.read_csv(paths[0], skiprows=1, low_memory=False)
-    data_dump['NIFTY'] = nifty.replace('NIFTY ', '')
-    data_dump['Time_Stamp'] = time_stamp.replace('As on ', '')
+    data_dump['NIFTY'] = nifty
+    data_dump['Time'] = time_stamp.split(" ")[3]
+    data_dump['Date'] = time_stamp.split(" ")[2]
     print(nifty, time_stamp)
     data_dump.drop(['Unnamed: 0', 'Unnamed: 22'], axis='columns', inplace=True)
+
+    data_dump['STRIKE PRICE'] = data_dump['STRIKE PRICE'].str.replace(',', '')
+    data_dump['STRIKE PRICE'] = pd.to_numeric(data_dump['STRIKE PRICE'], errors='coerce')
+    result_index = data_dump['STRIKE PRICE'].sub(float(nifty)).abs().idxmin()
+    data_dump = data_dump.loc[result_index - 4:result_index + 4]
+
     running_dump = pd.read_excel(todays_excel_path)
 
     if running_dump.empty == True or max(running_dump['Time_Stamp']) < max(data_dump['Time_Stamp']):
@@ -58,7 +72,7 @@ def stock_excel_update():
         writer = pd.ExcelWriter(todays_excel_path, engine='openpyxl')
         writer.book = book
         writer.sheets = {ws.title: ws for ws in book.worksheets}
-        data_dump.to_excel(writer, startrow=writer.sheets['Sheet1'].max_row, index=False,header=False)
+        data_dump.to_excel(writer, startrow=writer.sheets['Sheet1'].max_row, index=False, header=False)
         writer.save()
         print("New Data Added")
     os.remove(paths[0])
@@ -72,4 +86,5 @@ def update_excel():
 
 
 if __name__ == '__main__':
+    # stock_excel_update()
     update_excel()

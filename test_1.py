@@ -1,39 +1,48 @@
-# from selenium import webdriver
-# from webdriver_manager.chrome import ChromeDriverManager
-# from selenium.webdriver.chrome.service import Service
-# from selenium.webdriver.chrome.options import Options
-# from selenium.webdriver.support.ui import WebDriverWait
-# from selenium.webdriver.support import expected_conditions as EC
-# from selenium.webdriver.common.by import By
+# import plotly
+# from plotly.offline import plot
+# from plotly.subplots import make_subplots
+# import plotly.graph_objects as go
+# import plotly.express as px
 #
+# fig = make_subplots(
+# rows=2, cols=2, shared_xaxes=True,
+# vertical_spacing=0.02,horizontal_spacing=0.02)
 #
-# chrome_options = Options()
-# chrome_options.add_argument("--headless")
-# # options.add_argument('--headless')
-# s = Service(ChromeDriverManager().install())
-# driver = webdriver.Chrome(service=s)
-# driver.get("https://www.nseindia.com/option-chain")
-# WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.ID, "equity_underlyingVal")))
-# nifty = driver.find_element(By.XPATH, '//*[@id="equity_underlyingVal"]').text
-# time_stamp = driver.find_element(By.XPATH, '//*[@id="equity_timeStamp"]').text
-# print(nifty,time_stamp)
-# driver.quit()
+# df = px.data.gapminder().query("continent=='Oceania'")
+# # fig = px.line(df, x="year", y="lifeExp", color='country')
+#
+# fig.add_trace(px.line(df, x="year", y="lifeExp", color='country'),
+#           row=1, col=2)
+#
+# fig.add_trace(px.line(df, x="year", y="lifeExp", color='country'),
+#           row=2, col=1)
+#
+# fig.add_trace(px.line(df, x="year", y="lifeExp", color='country'),
+#           row=1, col=1)
+#
+# # fig.add_trace(go.Scatter(x=[6, 7, 8], y=[1000, 1100, 1200]),
+# #           row=2, col=1)
+#
+# fig.update_layout(height=1200, width=600,
+#               title_text="Stacked Subplots with Shared X-Axes")
+# fig['layout']['yaxis1'].update(domain=[0, 0.2])
+# fig['layout']['yaxis2'].update(domain=[0.3, 0.7])
+# fig['layout']['yaxis3'].update(domain=[0.8, 1])
+#
+# plotly.offline.plot(fig, filename='name.html')
 
-score = input("Enter Score: ")
+import plotly.express as px
+import pandas as pd
+import plotly
 
-if float(score) >= 0.9:
-    print("A")
-elif float(score)>=0.8:
-    print('B')
-elif float(score)>=0.7:
-    print('C')
-elif float(score)>=0.6:
-    print('D')
-else:
-    print('F')
-
-# >= 0.9 A
-# >= 0.8 B
-# >= 0.7 C
-# >= 0.6 D
-# < 0.6 F
+dataset = pd.read_excel(r'C:\Users\partha.singha\PycharmProjects\StockMarket\StockMarket_2021_12_06.xlsx',usecols=['Calls OI','Puts STRIKE PRICE','Puts OI','Nifty','Time_Stamp'])
+max_time_stamp = dataset['Time_Stamp'].max()
+dataset['Calls OI'] = dataset['Calls OI'].str.replace(",","")
+dataset['Calls OI'] = dataset['Calls OI'].astype(float)
+dataset['Puts OI'] = dataset['Puts OI'].str.replace(",","")
+dataset['Puts OI'] = dataset['Puts OI'].astype(float)
+new_data_set = dataset.loc[dataset.Time_Stamp == max_time_stamp].copy()
+put_stock_prices = new_data_set['Puts STRIKE PRICE'].to_list()
+gds1 = dataset.loc[dataset['Puts STRIKE PRICE'] == put_stock_prices[3]]
+fig1 = px.line(gds1, x='Time_Stamp', y=["Calls OI","Puts OI"])
+plotly.offline.plot(fig1)
